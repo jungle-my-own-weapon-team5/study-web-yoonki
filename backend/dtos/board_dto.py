@@ -26,3 +26,9 @@ class BoardResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class BoardListResponse(BaseModel):
+    items: list[BoardResponse]
+    page: int
+    size: int
+    total: int
