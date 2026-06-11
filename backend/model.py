@@ -37,7 +37,7 @@ class Board(BaseEntity, Base):
     category_id = Column(Integer, ForeignKey("category.id"), nullable=False)
     category = relationship("Category", back_populates="boards")
 
-    tag_relation = relationship("TagRelation", back_populates="board")
+    tag_relations = relationship("TagRelation", back_populates="board")
 
     likes = relationship("BoardLike", back_populates="board")
 
@@ -45,6 +45,8 @@ class Board(BaseEntity, Base):
 
 class BoardLike(Base):
     __tablename__ = 'board_like'
+
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     user = relationship("User", back_populates="board_likes")
@@ -57,7 +59,7 @@ class Tag(BaseEntity, Base):
     title = Column(String(250), nullable=False)
 
     version = Column(Integer, nullable=False, default=1)
-    tag_relation = relationship("TagRelation", back_populates="tag")
+    tag_relations = relationship("TagRelation", back_populates="tag")
 
     __mapper_args__ = {"version_id_col": version}
 
@@ -65,9 +67,9 @@ class TagRelation(Base):
     __tablename__ = 'tag_relation'
 
     board_id = Column(Integer, ForeignKey("board.id"), primary_key=True)
-    board = relationship("Board", back_populates="tag_relation")
+    board = relationship("Board", back_populates="tag_relations")
     tag_id = Column(Integer, ForeignKey("tag.id"), primary_key=True)
-    tag = relationship("Tag", back_populates="tag_relation")
+    tag = relationship("Tag", back_populates="tag_relations")
 
 class Category(BaseEntity, Base):
     __tablename__ = 'category'
