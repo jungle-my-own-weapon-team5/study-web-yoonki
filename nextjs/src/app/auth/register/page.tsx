@@ -11,12 +11,15 @@ import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/config";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { CurrentUser } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const RegisterPage = () => {
 
     const router = useRouter();
+    const setUser = useAuthStore((state) => state.setUser);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -47,9 +50,10 @@ const RegisterPage = () => {
             if(!response.ok) {
                 throw new Error("Invalid inputs!");
             }
-            
+
+            const user = await response.json() as CurrentUser;
+            setUser(user);
             router.push("/");
-            router.refresh();
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : "Register failed.");
         } finally {

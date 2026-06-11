@@ -10,12 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { API_BASE_URL } from "@/config";
+import type { CurrentUser } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const LoginPage = () => {
 
     const router = useRouter();
+    const setUser = useAuthStore((state) => state.setUser);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -43,8 +46,9 @@ const LoginPage = () => {
                 throw new Error("Invalid email or password");
             }
 
+            const user = await response.json() as CurrentUser;
+            setUser(user);
             router.push("/");
-            router.refresh();
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : "Login failed");
         } finally {

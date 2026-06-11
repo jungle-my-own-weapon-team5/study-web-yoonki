@@ -1,47 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/config";
+import { useEffect } from "react";
 
-type CurrentUser = {
-  id: number;
-  email: string;
-  nickname: string;
-};
-
+import { useAuthStore } from "@/stores/auth";
 const Header = () => {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading, checkAuth, logout } = useAuthStore();
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/auth/user`, {
-      credentials: "include",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return null;
-        }
-        return response.json();
-      })
-      .then((data: CurrentUser | null) => {
-        setUser(data);
-      })
-      .catch(() => {
-        setUser(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
-
-  const handleLogout = async () => {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-    setUser(null);
-  };
+    void checkAuth();
+  }, [checkAuth]);
 
   return (
     <header className="flex justify-evenly">
@@ -49,7 +17,7 @@ const Header = () => {
       {isLoading ? null : user ? (
         <>
           <span>{user.nickname}</span>
-          <button className="cursor-pointer" type="button" onClick={handleLogout}>
+          <button className="cursor-pointer" type="button" onClick={logout}>
             Logout
           </button>
         </>
