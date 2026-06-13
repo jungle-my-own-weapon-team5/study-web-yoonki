@@ -1,32 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from datetime import date
+from typing import Literal
 
-from database import get_db
-from dtos.board_dto import BoardCreateRequest, BoardListResponse, BoardResponse, BoardUpdateRequest
-from model import Board, User
-from routes.auth import get_current_user
+from dependencies.auth import get_current_user
+from dependencies.exceptions import to_http_exception
+from dependencies.services import get_board_service
+from domain.exceptions import DomainError
+from dtos.board_dto import (
+    BoardCreateRequest,
+    BoardListResponse,
+    BoardNeighborsResponse,
+    BoardResponse,
+    BoardUpdateRequest,
+    CategoryResponse,
+)
+from fastapi import APIRouter, Depends, Query
+from model import User
+from services.board_service import BoardService
 
 router = APIRouter(prefix="/board", tags=["board"])
+
+
+# 카테고리 목록 조회
+@router.get("/categories", response_model=list[CategoryResponse])
+def read_categories(board_service: BoardService = Depends(get_board_service)):
+    return board_service.list_categories()
 
 
 # 게시글 등록
 @router.post("/", response_model=BoardResponse)
 def create_board(
         body: BoardCreateRequest,
-        db: Session = Depends(get_db),
+        board_service: BoardService = Depends(get_board_service),
         current_user: User = Depends(get_current_user)):
-    board = Board(
-        title=body.title,
-        content=body.content,
-        category_id=body.category_id,
-        author_id=current_user.id,
-    )
-
-    db.add(board)
-    db.commit()
-    db.refresh(board)
-
-    return board
+    try:
+        return board_service.create_board(body, current_user)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
 
 # 게시글 전체 조회
@@ -34,28 +43,43 @@ def create_board(
 def read_boards(
         page: int = Query(default=1, ge=1),
         size: int = Query(default=10, ge=1, le=100),
-        db: Session = Depends(get_db)):
-    query = db.query(Board).order_by(Board.created_at.desc())
-    total = query.count()
-    items = query.offset((page - 1) * size).limit(size).all()
+        search_type: Literal["title", "content"] = Query(default="title"),
+        keyword: str | None = Query(default=None),
+        tag: str | None = Query(default=None),
+        start_date: date | None = Query(default=None),
+        end_date: date | None = Query(default=None),
+        board_service: BoardService = Depends(get_board_service)):
+    return board_service.list_boards(
+        page=page,
+        size=size,
+        search_type=search_type,
+        keyword=keyword,
+        tag=tag,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
-    return {
-        "items": items,
-        "page": page,
-        "size": size,
-        "total": total,
-    }
+
+# 게시글 이전/다음 조회
+@router.get("/{board_id}/neighbors", response_model=BoardNeighborsResponse)
+def read_board_neighbors(
+        board_id: int,
+        board_service: BoardService = Depends(get_board_service)):
+    try:
+        return board_service.get_board_neighbors(board_id)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
 
 # 게시글 단일 조회
 @router.get("/{board_id}", response_model=BoardResponse)
-def read_board(board_id: int, db: Session = Depends(get_db)):
-    board = db.query(Board).filter(Board.id == board_id).first()
-
-    if not board:
-        raise HTTPException(status_code=404, detail="Board not found")
-
-    return board
+def read_board(
+        board_id: int,
+        board_service: BoardService = Depends(get_board_service)):
+    try:
+        return board_service.get_board(board_id)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
 
 # 게시글 수정
@@ -63,44 +87,23 @@ def read_board(board_id: int, db: Session = Depends(get_db)):
 def update_board(
         board_id: int,
         body: BoardUpdateRequest,
-        db: Session = Depends(get_db),
+        board_service: BoardService = Depends(get_board_service),
         current_user: User = Depends(get_current_user)):
-    board = db.query(Board).filter(Board.id == board_id).first()
-
-    if not board:
-        raise HTTPException(status_code=404, detail="Board not found")
-
-    if board.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    update_data = body.model_dump(exclude_unset=True, exclude={"tags"})
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-
-    for field, value in update_data.items():
-        setattr(board, field, value)
-
-    db.commit()
-    db.refresh(board)
-
-    return board
+    try:
+        return board_service.update_board(board_id, body, current_user)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
 
 # 게시글 삭제
 @router.delete("/{board_id}")
 def delete_board(
         board_id: int,
-        db: Session = Depends(get_db),
+        board_service: BoardService = Depends(get_board_service),
         current_user: User = Depends(get_current_user)):
-    board = db.query(Board).filter(Board.id == board_id).first()
-
-    if not board:
-        raise HTTPException(status_code=404, detail="Board not found")
-
-    if board.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    db.delete(board)
-    db.commit()
+    try:
+        board_service.delete_board(board_id, current_user)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
     return {"message": "Board deleted"}

@@ -37,11 +37,15 @@ class Board(BaseEntity, Base):
     category_id = Column(Integer, ForeignKey("category.id"), nullable=False)
     category = relationship("Category", back_populates="boards")
 
-    tag_relations = relationship("TagRelation", back_populates="board")
+    tag_relations = relationship("TagRelation", back_populates="board", cascade="all, delete-orphan")
 
     likes = relationship("BoardLike", back_populates="board")
 
     comments = relationship("Comment", back_populates="board")
+
+    @property
+    def tags(self):
+        return [relation.tag for relation in self.tag_relations]
 
 class BoardLike(Base):
     __tablename__ = 'board_like'
