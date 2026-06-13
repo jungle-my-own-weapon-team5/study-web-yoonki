@@ -14,6 +14,7 @@ const Header = () => {
   return (
     <header className="flex justify-evenly">
       <Link href="/">Main</Link>
+      <Link href="/board">Board</Link>
       {isLoading ? null : user ? (
         <>
           <span>{user.nickname}</span>

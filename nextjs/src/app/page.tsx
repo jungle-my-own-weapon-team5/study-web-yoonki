@@ -1,25 +1,31 @@
-import Image from "next/image";
-import { Card, 
-  CardHeader, 
-  CardDescription, 
-  CardContent, 
-  CardTitle
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <div>
-      <Card className="max-w-sm">
-      <CardHeader>
-        <CardTitle>Project Overview</CardTitle>
-        <CardDescription>
-          Track progress and recent activity for your Next.js app.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        Your design system is ready. Start building your next component.
-      </CardContent>
-    </Card>
-    </div>
+    <main className="mx-auto w-full max-w-3xl px-6 py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Study Web</CardTitle>
+          <CardDescription>게시글을 작성하고 목록을 확인합니다.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-2">
+          <Button asChild>
+            <Link href="/board">게시글 보기</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/board/new">게시글 작성</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </main>
   );
 }
