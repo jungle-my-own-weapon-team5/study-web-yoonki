@@ -8,10 +8,9 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { API_BASE_URL } from "@/config";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { CurrentUser } from "@/stores/auth";
+import { register } from "@/lib/auth-api";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -34,24 +33,11 @@ const RegisterPage = () => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/register`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                    email,
-                    nickname: name,
-                    password
-                })
+            const user = await register({
+                email,
+                nickname: name,
+                password,
             });
-
-            if(!response.ok) {
-                throw new Error("Invalid inputs!");
-            }
-
-            const user = await response.json() as CurrentUser;
             setUser(user);
             router.push("/");
         } catch (error) {

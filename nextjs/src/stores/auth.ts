@@ -1,12 +1,7 @@
 import { create } from "zustand";
 
-import { API_BASE_URL } from "@/config";
-
-export type CurrentUser = {
-  id: number;
-  email: string;
-  nickname: string;
-};
+import { fetchCurrentUser, logout as requestLogout } from "@/lib/auth-api";
+import type { CurrentUser } from "@/types/auth";
 
 type AuthStore = {
   user: CurrentUser | null;
@@ -24,16 +19,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/user`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        set({ user: null });
-        return;
-      }
-
-      const user = await response.json();
+      const user = await fetchCurrentUser();
       set({ user });
     } catch {
       set({ user: null });
@@ -42,10 +28,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
   logout: async () => {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
-    set({ user: null });
+    try {
+      await requestLogout();
+    } catch {
+      // Clear local auth state even if the server session is already gone.
+    } finally {
+      set({ user: null });
+    }
   },
 }));
