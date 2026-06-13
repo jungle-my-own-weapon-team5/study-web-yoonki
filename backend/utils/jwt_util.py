@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
-from fastapi import HTTPException, status
 from jwt.exceptions import InvalidTokenError
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-this-secret-for-local-development-only")
@@ -21,17 +20,12 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
 
 
 def get_payload(token: str) -> dict[str, Any]:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-    )
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except InvalidTokenError as exc:
-        raise credentials_exception from exc
+        raise ValueError("Could not validate credentials") from exc
 
     if payload.get("sub") is None:
-        raise credentials_exception
+        raise ValueError("Could not validate credentials")
 
     return payload

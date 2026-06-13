@@ -1,13 +1,14 @@
 import os
 
+from dependencies.auth import get_current_user
+from dependencies.exceptions import to_http_exception
+from dependencies.services import get_auth_service
+from domain.exceptions import DomainError
 from dtos.auth_dto import LoginRequest, RegisterRequest
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
-from sqlalchemy.orm import Session
-
-from database import get_db
+from fastapi import APIRouter, Depends, Response
 from model import User
-from utils.jwt_util import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, get_payload
-from utils.security import hash_password, verify_password
+from services.auth_service import AuthService
+from utils.jwt_util import ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,41 +27,17 @@ def set_access_token_cookie(response: Response, access_token: str):
     )
 
 
-async def get_current_user(
-        access_token: str | None = Cookie(default=None),
-        db: Session = Depends(get_db)):
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    payload = get_payload(access_token)
-    try:
-        user_id = int(payload.get("sub"))
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=401, detail="Invalid token") from exc
-
-    user = db.query(User).filter(User.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    return user
-
-
 @router.post("/login")
-def login(response: Response, body: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == body.email).first()
+def login(
+        response: Response,
+        body: LoginRequest,
+        auth_service: AuthService = Depends(get_auth_service)):
+    try:
+        user = auth_service.login(body)
+        access_token = auth_service.create_user_access_token(user)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    if not verify_password(body.password, user.password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "email": user.email,
-        "nickname": user.nickname,
-    })
     set_access_token_cookie(response, access_token)
 
     return {
@@ -71,27 +48,16 @@ def login(response: Response, body: LoginRequest, db: Session = Depends(get_db))
 
 
 @router.post("/register")
-def register(response: Response, body: RegisterRequest, db: Session = Depends(get_db)):
-    exists = db.query(User).filter(User.email == body.email).first()
+def register(
+        response: Response,
+        body: RegisterRequest,
+        auth_service: AuthService = Depends(get_auth_service)):
+    try:
+        user = auth_service.register(body)
+        access_token = auth_service.create_user_access_token(user)
+    except DomainError as exc:
+        raise to_http_exception(exc) from exc
 
-    if exists:
-        raise HTTPException(status_code=409, detail="Email already exists")
-
-    user = User(
-        nickname=body.nickname,
-        email=body.email,
-        password=hash_password(body.password),
-    )
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "email": user.email,
-        "nickname": user.nickname,
-    })
     set_access_token_cookie(response, access_token)
 
     return {
